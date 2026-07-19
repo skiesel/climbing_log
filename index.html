@@ -2,371 +2,513 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- maximum-scale=1.0 prevents iOS from awkwardly zooming in when you tap the dropdowns -->
+    <!-- PWA & Mobile Meta Tags -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Climbing Log</title>
     
-    <!-- PWA Manifest for Android and standard web -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
-    
-    <!-- Apple/iOS Specific Tags for the home screen -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Send Log">
     <link rel="apple-touch-icon" href="icon-192.png">
 
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         body {
             font-family: system-ui, -apple-system, sans-serif;
             max-width: 500px;
-            padding: 20px;
-            margin: 0 auto;
-            background-color: #f8f9fa;
+            margin: 2rem auto;
+            padding: 1rem;
+            background-color: #f9f9f9;
+            color: #333;
         }
         .container {
             background: white;
-            padding: 20px;
+            padding: 2rem;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        textarea {
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        input[type="text"], input[type="password"], select {
             width: 100%;
-            height: 150px;
-            font-family: monospace;
-            font-size: 14px;
-            padding: 10px;
-            box-sizing: border-box;
+            padding: 0.75rem;
             border: 1px solid #ccc;
             border-radius: 4px;
-            margin-bottom: 20px;
-            resize: vertical;
+            box-sizing: border-box;
+            font-size: 1rem;
         }
-        #audio-controls {
-            margin-bottom: 20px;
-            padding: 10px;
-            background: #f0f0f0;
+        .hidden {
+            display: none;
+        }
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: #2563eb;
+            color: white;
+            border: none;
             border-radius: 4px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
         }
-        #paper {
-            overflow-x: auto;
-            border-top: 1px solid #eee;
-            padding-top: 20px;
+        button:hover {
+            background: #1d4ed8;
         }
-        
-        .selected-note path, 
-        .selected-note text {
-            fill: #007bff !important;
-            stroke: #007bff !important;
+        button:disabled {
+            background: #93c5fd;
+            cursor: not-allowed;
+        }
+        #message {
+            margin-top: 1rem;
+            text-align: center;
+            font-weight: bold;
         }
 
-        /* Fixed positioning ensures it pops up exactly at the mouse pointer */
-        #tab-editor {
-            display: none;
-            position: fixed; 
-            background: white;
-            border: 2px solid #007bff;
+        /* --- New Dashboard Styles --- */
+        .tabs { display: flex; margin-bottom: 1rem; border-bottom: 2px solid #ccc; max-width: 500px; margin: 0 auto 1rem auto; }
+        .tab-btn { flex: 1; padding: 1rem; background: none; color: #666; border: none; font-weight: bold; cursor: pointer; border-radius: 0; }
+        .tab-btn.active { color: #2563eb; border-bottom: 3px solid #2563eb; background: #fff; }
+        .view-section { display: none; max-width: 500px; margin: 0 auto; }
+        .view-section.active { display: block; }
+        
+        .calendar-wrapper { overflow-x: auto; margin-top: 1rem; padding-bottom: 1rem; }
+        .calendar-grid { 
+            display: grid; 
+            grid-template-rows: repeat(7, 1fr); 
+            grid-auto-flow: column; 
+            gap: 4px; 
+            width: max-content;
+        }
+        .day-cell {
+            width: 26px; height: 26px;
+            background-color: #ebedf0;
             border-radius: 4px;
-            padding: 2px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            z-index: 1000;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+            position: relative;
         }
-        #fret-input {
-            width: 50px;
-            font-size: 18px;
-            font-weight: bold;
-            border: none;
-            outline: none;
-            text-align: center;
-            font-family: monospace;
-        }
-        #fret-input::-webkit-outer-spin-button,
-        #fret-input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
+        .intensity-1 { background-color: #9be9a8; }
+        .intensity-2 { background-color: #40c463; }
+        .intensity-3 { background-color: #30a14e; }
+        .intensity-4 { background-color: #216e39; }
+        
+        .chart-container { position: relative; height: 350px; width: 100%; margin-top: 1rem; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2>Tab & Notation Renderer</h2>
-        
-        <!-- Only V: 1 is needed. The engine reads this and automatically draws the Tab! -->
-        <textarea id="abc-source">
-X: 1
-T: First Collaboration
-M: 4/4
-L: 1/4
-K: C
-V: 1 clef=treble name="Guitar"
-%
-[V: 1] "C" C E G c | "F" F A c f | "G" G B d g | "C" c4 |
-        </textarea>
+    <!-- Tab Navigation -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('logView', this)">Log Climb</button>
+        <button class="tab-btn" onclick="switchTab('dashboardView', this)">Dashboard</button>
+    </div>
 
-        <div id="audio-controls"></div>
-        <div id="paper"></div>
+    <!-- LOG CLIMB VIEW -->
+    <div id="logView" class="view-section active">
+        <div class="container">
+            <h2>Log a Climb</h2>
+            <form id="climbForm">
+                
+                <div class="form-group">
+                    <label for="locationSelect">Location</label>
+                    <select id="locationSelect" required>
+                        <option value="" disabled selected>Loading locations...</option>
+                    </select>
+                </div>
 
-        <div id="tab-editor">
-            <input type="number" id="fret-input" min="0" max="24" placeholder="#" />
+                <div class="form-group hidden" id="newLocationGroup">
+                    <label for="newLocationInput">New Location Name</label>
+                    <input type="text" id="newLocationInput" placeholder="Enter new location">
+                </div>
+
+                <div class="form-group">
+                    <label for="climbType">Type</label>
+                    <select id="climbType" required>
+                        <option value="" disabled selected>Select type</option>
+                        <option value="boulder">Boulder</option>
+                        <option value="top_rope">Top Rope</option>
+                        <option value="sport">Sport</option>
+                        <option value="trad">Trad</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="grade">Grade</label>
+                    <select id="grade" required disabled>
+                        <option value="" disabled selected>Select a type first</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="send">Send Type</label>
+                    <select id="send" required>
+                        <option value="" disabled selected>Select outcome</option>
+                        <option value="Onsight">Onsight</option>
+                        <option value="Flash">Flash</option>
+                        <option value="Redpoint">Redpoint</option>
+                        <option value="Project (Progress)">Project (Progress)</option>
+                        <option value="Project (No Progress)">Project (No Progress)</option>
+                        <option value="Bailed">Bailed</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="feel">How it felt</label>
+                    <select id="feel" required>
+                        <option value="" disabled selected>Select feeling</option>
+                        <option value="Easy">Easy</option>
+                        <option value="Work">Work</option>
+                        <option value="Impossible">Impossible</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="climbName">Name (Optional)</label>
+                    <input type="text" id="climbName" placeholder="e.g., The Rose">
+                </div>
+
+                <div class="form-group">
+                    <label for="passcode">Passcode</label>
+                    <input type="password" id="passcode" placeholder="Enter secret pin" required>
+                </div>
+
+                <button type="submit" id="submitBtn">Save Climb</button>
+            </form>
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <!-- DASHBOARD VIEW -->
+    <div id="dashboardView" class="view-section">
+        <div class="container" style="margin-bottom: 2rem;">
+            <h2>Activity Calendar</h2>
+            <div class="calendar-wrapper">
+                <div class="calendar-grid" id="calendarGrid">
+                    <!-- Javascript will inject the squares here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <h2>Grade Pyramid</h2>
+            <select id="pyramidTypeFilter" onchange="renderPyramid()">
+                <option value="boulder">Bouldering</option>
+                <option value="ropes">Ropes (Sport/Trad/Top Rope)</option>
+            </select>
+            <div class="chart-container">
+                <canvas id="pyramidChart"></canvas>
+            </div>
         </div>
     </div>
 
     <script>
-        const abcSource = document.getElementById("abc-source");
-        const paper = document.getElementById("paper");
-        const tabEditor = document.getElementById("tab-editor");
-        const fretInput = document.getElementById("fret-input");
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2KcUbI49jBhnEvbz-dQPC1PIExtfKFZaaZ_omKftvFI_pCqCQh-V5cfj2fPdcDVE/exec'; 
 
-        const synthControl = new ABCJS.synth.SynthController();
-        synthControl.load("#audio-controls", null, {
-            displayRestart: true, displayPlay: true, displayProgress: true
-        });
+        const form = document.getElementById('climbForm');
+        const locationSelect = document.getElementById('locationSelect');
+        const newLocationGroup = document.getElementById('newLocationGroup');
+        const newLocationInput = document.getElementById('newLocationInput');
+        const climbTypeSelect = document.getElementById('climbType');
+        const gradeSelect = document.getElementById('grade');
+        const submitBtn = document.getElementById('submitBtn');
+        const messageDiv = document.getElementById('message');
 
-        let currentSelection = { start: null, end: null };
-        window.currentVisualObj = null;
-        let pendingTabEdit = null;
-
-        const chromaticScaleTabs = [
-            "E,,", "F,,", "^F,,", "G,,", "^G,,", "A,,", "^A,,", "B,,",
-            "C,", "^C,", "D,", "^D,", "E,", "F,", "^F,", "G,", "^G,", "A,", "^A,", "B,",
-            "C", "^C", "D", "^D", "E", "F", "^F", "G", "^G", "A", "^A", "B",
-            "c", "^c", "d", "^d", "e", "f", "^f", "g", "^g", "a", "^a", "b",
-            "c'", "^c'", "d'", "^d'", "e'", "f'", "^f'", "g'", "^g'", "a'", "^a'", "b'"
+        // Grade scale arrays
+        const vGrades = ['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15'];
+        const ydsGrades = [
+            '5.5', '5.6', '5.7', '5.8', '5.9', 
+            '5.10a', '5.10b', '5.10c', '5.10d',
+            '5.11a', '5.11b', '5.11c', '5.11d',
+            '5.12a', '5.12b', '5.12c', '5.12d',
+            '5.13a', '5.13b', '5.13c', '5.13d',
+            '5.14a', '5.14b', '5.14c', '5.14d'
         ];
 
-        const tuningBase = { 1: 24, 2: 19, 3: 15, 4: 10, 5: 5, 6: 0 }; // Standard E Tuning
-        
-        const diatonicScale = [
-            "C,,", "D,,", "E,,", "F,,", "G,,", "A,,", "B,,", "C,", "D,", "E,", "F,", "G,", "A,", "B,",       
-            "C", "D", "E", "F", "G", "A", "B", "c", "d", "e", "f", "g", "a", "b",              
-            "c'", "d'", "e'", "f'", "g'", "a'", "b'", "c''", "d''", "e''", "f''", "g''", "a''", "b''" 
-        ];
+        // 1. Load Locations on Startup
+        async function loadLocations() {
+            try {
+                const response = await fetch(SCRIPT_URL + "?action=getLocations");
+                const data = await response.json();
+                const locations = data.locations;
+                 
+                locationSelect.innerHTML = '<option value="" disabled selected>Select a location</option>';
+                
+                locations.forEach(loc => {
+                    const option = document.createElement('option');
+                    option.value = loc;
+                    option.textContent = loc;
+                    locationSelect.appendChild(option);
+                });
 
-        const durationScale = ["/8", "/4", "/2", "", "2", "3", "4", "6", "8"];
+                const newOption = document.createElement('option');
+                newOption.value = 'ADD_NEW';
+                newOption.textContent = '+ Add New Location...';
+                locationSelect.appendChild(newOption);
 
-        // Only handles normal treble note selection now
-        function handleNoteClick(abcElem, tuneNumber, classes, analysis, drag, mouseEvent) {
-            document.querySelectorAll('.selected-note').forEach(el => el.classList.remove('selected-note'));
-            const clickedGroup = mouseEvent.target.closest('g.abcjs-note');
-            if (clickedGroup) clickedGroup.classList.add('selected-note');
-
-            if (abcElem.startChar !== undefined && abcElem.endChar !== undefined) {
-                currentSelection.start = abcElem.startChar;
-                currentSelection.end = abcElem.endChar;
-                abcSource.focus();
-                abcSource.setSelectionRange(abcElem.startChar, abcElem.endChar);
+            } catch (error) {
+                console.error("Error loading locations:", error);
+                locationSelect.innerHTML = '<option value="">Error loading locations</option>';
             }
         }
 
-        // --- THE BULLETPROOF MASTER INTERCEPTOR ---
-        paper.addEventListener('mousedown', function(e) {
-            // Let them type in the box if it's already open
-            if (e.target.closest('#tab-editor')) return;
-            if (tabEditor.style.display === 'block') tabEditor.style.display = 'none';
-
-            if (!window.currentVisualObj) return;
-            const svg = paper.querySelector('svg');
-            if (!svg) return;
-
-            // Map mouse to SVG coordinates
-            const pt = svg.createSVGPoint();
-            pt.x = e.clientX;
-            pt.y = e.clientY;
-            const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
-            const clickX = svgP.x;
-            const clickY = svgP.y;
-
-            // Extract ONLY the Treble notes (Staff 0), because they drive the Tab automatically
-            let trebleNotes = [];
-            let trebleYSum = 0;
-            let tabTopY = null;
-
-            window.currentVisualObj.lines.forEach(line => {
-                if(line.staves) {
-                    if (line.staves[1] && line.staves[1].top !== undefined) {
-                        tabTopY = line.staves[1].top; // Find where the tab staff begins
-                    }
-                    if (line.staves[0] && line.staves[0].voices) {
-                        line.staves[0].voices.forEach(voice => {
-                            if (!voice.elems) return;
-                            voice.elems.forEach(elem => {
-                                const elemX = elem.x !== undefined ? elem.x : (elem.abselem ? elem.abselem.x : undefined);
-                                const elemY = elem.y !== undefined ? elem.y : (elem.abselem ? elem.abselem.y : undefined);
-                                if (elemX !== undefined && elem.startChar !== undefined) {
-                                    trebleNotes.push({ startChar: elem.startChar, endChar: elem.endChar, x: elemX, y: elemY });
-                                    if (elemY !== undefined) trebleYSum += elemY;
-                                }
-                            });
-                        });
-                    }
-                }
-            });
-
-            if (trebleNotes.length === 0) return;
-
-            // Math: Did they click Treble or Tab?
-            const avgTrebleY = trebleYSum / trebleNotes.length;
-            if (tabTopY === null) tabTopY = avgTrebleY + 75; // Safe fallback
-            
-            const isTab = clickY > (avgTrebleY + 40); // Anything significantly below the Treble staff is Tab
-
-            // Find nearest note horizontally
-            let closestNote = trebleNotes[0];
-            let minDx = Math.abs(closestNote.x - clickX);
-            trebleNotes.forEach(n => {
-                let dx = Math.abs(n.x - clickX);
-                if (dx < minDx) {
-                    minDx = dx;
-                    closestNote = n;
-                }
-            });
-
-            const clickedDirectly = e.target.closest('g.abcjs-note, g.abcjs-rest, g.abcjs-tab-note');
-            const withinXRadius = minDx < 15;
-
-            // If it's Tab, calculate which of the 6 strings they clicked
-            let stringNum = 1;
-            if (isTab) {
-                stringNum = Math.round((clickY - tabTopY) / 10) + 1;
-                if (stringNum < 1) stringNum = 1;
-                if (stringNum > 6) stringNum = 6;
-            }
-
-            // Execute logic
-            if (clickedDirectly || withinXRadius) {
-                if (isTab) {
-                    e.stopPropagation(); e.preventDefault();
-                    showTabEditor(e.clientX, e.clientY, closestNote.startChar, closestNote.endChar - closestNote.startChar, stringNum);
-                } else {
-                    return; // Let the native handleNoteClick take over for Treble selection!
-                }
+        // 2. Toggle "New Location" Input
+        locationSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'ADD_NEW') {
+                newLocationGroup.classList.remove('hidden');
+                newLocationInput.required = true;
+                newLocationInput.focus();
             } else {
-                e.stopPropagation(); e.preventDefault();
-                let insertIndex = closestNote.endChar;
-                if (clickX < closestNote.x) insertIndex = closestNote.startChar;
-
-                if (isTab) {
-                    showTabEditor(e.clientX, e.clientY, insertIndex, 0, stringNum);
-                } else {
-                    const sourceText = abcSource.value;
-                    abcSource.value = sourceText.substring(0, insertIndex) + " C" + sourceText.substring(insertIndex);
-                    currentSelection = { start: null, end: null };
-                    document.querySelectorAll('.selected-note').forEach(el => el.classList.remove('selected-note'));
-                    renderMusic();
-                }
-            }
-        }, true); // 'true' forces interception
-
-        // --- TAB INPUT LOGIC ---
-        function showTabEditor(clientX, clientY, index, replaceLength, stringNum) {
-            pendingTabEdit = { index: index, replaceLength: replaceLength, stringNum: stringNum };
-            tabEditor.style.left = clientX + "px";
-            tabEditor.style.top = (clientY - 40) + "px";
-            tabEditor.style.display = "block";
-            fretInput.value = "";
-            setTimeout(() => fretInput.focus(), 10);
-        }
-
-        fretInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                let fret = parseInt(fretInput.value);
-                if (!isNaN(fret) && fret >= 0) {
-                    let pitchIndex = tuningBase[pendingTabEdit.stringNum] + fret;
-                    if (pitchIndex >= chromaticScaleTabs.length) pitchIndex = chromaticScaleTabs.length - 1;
-                    let pitch = chromaticScaleTabs[pitchIndex];
-
-                    const sourceText = abcSource.value;
-                    if (pendingTabEdit.replaceLength > 0) {
-                        let oldNote = sourceText.substring(pendingTabEdit.index, pendingTabEdit.index + pendingTabEdit.replaceLength);
-                        abcSource.value = sourceText.substring(0, pendingTabEdit.index) + replacePitch(oldNote, pitch) + sourceText.substring(pendingTabEdit.index + pendingTabEdit.replaceLength);
-                    } else {
-                        abcSource.value = sourceText.substring(0, pendingTabEdit.index) + " " + pitch + sourceText.substring(pendingTabEdit.index);
-                    }
-                    renderMusic();
-                }
-                tabEditor.style.display = "none";
-            }
-            if (e.key === 'Escape') tabEditor.style.display = "none";
-        });
-
-        // --- KEYBOARD CONTROLS (Treble only) ---
-        window.addEventListener('keydown', function(e) {
-            if (tabEditor.style.display === 'block') return; // Don't intercept while typing frets!
-            if (currentSelection.start === null || currentSelection.start === currentSelection.end) return;
-
-            const sourceText = abcSource.value;
-            let selectedNoteText = sourceText.substring(currentSelection.start, currentSelection.end);
-            let newNoteText = selectedNoteText;
-
-            if (e.key === 'Backspace' || e.key === 'Delete') { newNoteText = ""; e.preventDefault(); } 
-            else if (e.key === 's') { newNoteText = modifyAccidental(selectedNoteText, '^'); e.preventDefault(); } 
-            else if (e.key === 'f') { newNoteText = modifyAccidental(selectedNoteText, '_'); e.preventDefault(); } 
-            else if (e.key === 'n') { newNoteText = modifyAccidental(selectedNoteText, '='); e.preventDefault(); } 
-            else if (e.key === 'c') { newNoteText = modifyAccidental(selectedNoteText, ''); e.preventDefault(); } 
-            else if (e.key === 'ArrowUp') { newNoteText = shiftPitch(selectedNoteText, 1); e.preventDefault(); } 
-            else if (e.key === 'ArrowDown') { newNoteText = shiftPitch(selectedNoteText, -1); e.preventDefault(); } 
-            else if (e.key === 'ArrowLeft') { newNoteText = shiftDuration(selectedNoteText, 1); e.preventDefault(); } 
-            else if (e.key === 'ArrowRight') { newNoteText = shiftDuration(selectedNoteText, -1); e.preventDefault(); }
-
-            if (newNoteText !== selectedNoteText) {
-                const newSource = sourceText.substring(0, currentSelection.start) + newNoteText + sourceText.substring(currentSelection.end);
-                abcSource.value = newSource;
-                currentSelection.end = currentSelection.start + newNoteText.length;
-                renderMusic();
-                if (newNoteText !== "") abcSource.setSelectionRange(currentSelection.start, currentSelection.end);
+                newLocationGroup.classList.add('hidden');
+                newLocationInput.required = false;
+                newLocationInput.value = ''; 
             }
         });
 
-        function replacePitch(fullNoteString, newPitch) {
-            const matchPrefix = fullNoteString.match(/^(\s*(?:"[^"]*"\s*)*)(.*)$/);
-            const prefix = matchPrefix ? matchPrefix[1] : '';
-            const noteMatch = (matchPrefix ? matchPrefix[2] : fullNoteString).match(/^([\^_=]*)([A-Ga-g][,']*|[Zz])([\d\/]*)(.*)$/);
-            if (!noteMatch) return fullNoteString; 
-            return prefix + newPitch + noteMatch[3] + noteMatch[4];
-        }
-
-        function modifyAccidental(fullNoteString, accidentalChar) {
-            const match = fullNoteString.match(/^(\s*(?:"[^"]*"\s*)*)(.*)$/);
-            return (match ? match[1] : '') + accidentalChar + (match ? match[2] : fullNoteString).replace(/^[\^_=]+/, '');
-        }
-
-        function shiftPitch(fullNoteString, direction) {
-            const matchPrefix = fullNoteString.match(/^(\s*(?:"[^"]*"\s*)*)(.*)$/);
-            const noteMatch = (matchPrefix ? matchPrefix[2] : fullNoteString).match(/^([\^_=]*)([A-Ga-g][,']*|[Zz])([\d\/]*)(.*)$/);
-            if (!noteMatch) return fullNoteString;
-            const currentIndex = diatonicScale.indexOf(noteMatch[2]);
-            if (currentIndex === -1) return fullNoteString; 
-            let newIndex = Math.max(0, Math.min(currentIndex + direction, diatonicScale.length - 1));
-            return (matchPrefix ? matchPrefix[1] : '') + noteMatch[1] + diatonicScale[newIndex] + noteMatch[3] + noteMatch[4];
-        }
-
-        function shiftDuration(fullNoteString, direction) {
-            const matchPrefix = fullNoteString.match(/^(\s*(?:"[^"]*"\s*)*)(.*)$/);
-            const noteMatch = (matchPrefix ? matchPrefix[2] : fullNoteString).match(/^([\^_=]*)([A-Ga-g][,']*|[Zz])([\d\/]*)(.*)$/);
-            if (!noteMatch) return fullNoteString;
-            let duration = noteMatch[3];
-            if (duration === "/") duration = "/2"; if (duration === "1") duration = "";
-            let currentIndex = durationScale.indexOf(duration);
-            if (currentIndex === -1) currentIndex = 3; 
-            let newIndex = Math.max(0, Math.min(currentIndex + direction, durationScale.length - 1));
-            return (matchPrefix ? matchPrefix[1] : '') + noteMatch[1] + noteMatch[2] + durationScale[newIndex] + noteMatch[4];
-        }
-
-        function renderMusic() {
-            const abcString = abcSource.value;
-            const visualObj = ABCJS.renderAbc(paper, abcString, {
-                add_classes: true, responsive: "resize", tablature: [{ instrument: 'guitar' }], clickListener: handleNoteClick 
+        // 3. Dynamically populate the Grade dropdown
+        climbTypeSelect.addEventListener('change', (e) => {
+            const selectedType = e.target.value;
+            
+            gradeSelect.innerHTML = '<option value="" disabled selected>Select grade</option>';
+            
+            const gradesToUse = selectedType === 'boulder' ? vGrades : ydsGrades;
+            
+            gradesToUse.forEach(grade => {
+                const option = document.createElement('option');
+                option.value = grade;
+                option.textContent = grade;
+                gradeSelect.appendChild(option);
             });
-            if (visualObj && visualObj.length > 0) window.currentVisualObj = visualObj[0];
-            if (ABCJS.synth.supportsAudio()) {
-                const createSynth = new ABCJS.synth.CreateSynth();
-                createSynth.init({ visualObj: visualObj[0] }).then(() => synthControl.setTune(visualObj[0], false)).catch(console.error);
+
+            gradeSelect.disabled = false;
+        });
+
+        // 4. Handle Form Submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+            messageDiv.textContent = '';
+
+            const finalLocation = locationSelect.value === 'ADD_NEW' 
+                ? newLocationInput.value 
+                : locationSelect.value;
+
+            const payload = {
+                action: "logClimb",
+                location: finalLocation,
+                type: climbTypeSelect.value,
+                grade: gradeSelect.value,
+                send: document.getElementById('send').value,
+                feel: document.getElementById('feel').value,
+                name: document.getElementById('climbName').value,
+                passcode: document.getElementById('passcode').value
+            };
+
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Server rejected the request'); 
+                }
+
+                messageDiv.style.color = 'green';
+                messageDiv.textContent = 'Climb logged successfully!';
+                
+                form.reset();
+                newLocationGroup.classList.add('hidden');
+                gradeSelect.disabled = true;
+                gradeSelect.innerHTML = '<option value="" disabled selected>Select a type first</option>';
+                
+                // Clear out the cached climbing data so the dashboard is forced to re-fetch new climbs
+                climbingData = []; 
+
+                if (locationSelect.value === 'ADD_NEW') {
+                    loadLocations(); 
+                }
+
+            } catch (error) {
+                console.error("Error saving:", error);
+                messageDiv.style.color = 'red';
+                messageDiv.textContent = error.message === 'Invalid Passcode' 
+                    ? 'Incorrect Passcode!' 
+                    : 'Error saving climb.';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Climb';
+            }
+        });
+
+
+        // -----------------------------------------------------
+        // --- DASHBOARD LOGIC ---
+        // -----------------------------------------------------
+        
+        let climbingData = [];
+        let pyramidChartInstance = null;
+
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            btnElement.classList.add('active');
+
+            if (tabId === 'dashboardView' && climbingData.length === 0) {
+                loadDashboardData();
             }
         }
 
-        renderMusic();
-        abcSource.addEventListener("input", renderMusic);
+        async function loadDashboardData() {
+            try {
+                const response = await fetch(SCRIPT_URL + "?action=getLogs");
+                const result = await response.json();
+                climbingData = result.logs || [];
+                
+                renderCalendar();
+                renderPyramid();
+            } catch (err) {
+                console.error("Failed to load data", err);
+            }
+        }
+
+        const icons = {
+            boulder: '👜', 
+            sport: '🔗',    
+            trad: '🔩',    
+            top_rope: '🪢' 
+        };
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+            
+            const daysMap = {};
+            climbingData.forEach(climb => {
+                // Ensure date is formatted correctly
+                const dateObj = new Date(climb.date);
+                if (isNaN(dateObj.getTime())) return; // Skip invalid dates
+                
+                const dateStr = dateObj.toISOString().split('T')[0];
+                
+                if (!daysMap[dateStr]) {
+                    daysMap[dateStr] = { count: 0, types: {} };
+                }
+                
+                daysMap[dateStr].count++;
+                
+                const currentType = climb.type;
+                if (!daysMap[dateStr].types[currentType]) {
+                    daysMap[dateStr].types[currentType] = 0;
+                }
+                daysMap[dateStr].types[currentType]++;
+            });
+
+            // Generate last 90 days
+            const today = new Date();
+            for (let i = 90; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(today.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                
+                const cell = document.createElement('div');
+                cell.className = 'day-cell';
+                
+                if (daysMap[dateStr]) {
+                    const data = daysMap[dateStr];
+                    
+                    if (data.count > 0) cell.classList.add('intensity-1');
+                    if (data.count > 3) cell.classList.add('intensity-2');
+                    if (data.count > 6) cell.classList.add('intensity-3');
+                    if (data.count > 10) cell.classList.add('intensity-4');
+
+                    // Find dominant climb type for the icon
+                    const dominantType = Object.keys(data.types).reduce((a, b) => {
+                        return data.types[a] > data.types[b] ? a : b;
+                    });
+                    
+                    cell.textContent = icons[dominantType] || '';
+                    cell.title = `${dateStr}: ${data.count} climbs`; 
+                }
+                
+                grid.appendChild(cell);
+            }
+        }
+
+        function renderPyramid() {
+            const typeFilter = document.getElementById('pyramidTypeFilter').value;
+            const isBoulder = typeFilter === 'boulder';
+            
+            const gradeCounts = {};
+            
+            climbingData.forEach(climb => {
+                const isClimbBoulder = climb.type === 'boulder';
+                // Group sport, trad, and top rope together under "ropes"
+                if (isBoulder === isClimbBoulder) {
+                    if (!gradeCounts[climb.grade]) {
+                        gradeCounts[climb.grade] = 0;
+                    }
+                    gradeCounts[climb.grade]++;
+                }
+            });
+
+            const referenceScale = isBoulder ? vGrades : ydsGrades;
+            
+            const sortedLabels = Object.keys(gradeCounts).sort((a, b) => {
+                return referenceScale.indexOf(a) - referenceScale.indexOf(b);
+            });
+            
+            const dataValues = sortedLabels.map(grade => gradeCounts[grade]);
+
+            if (pyramidChartInstance) {
+                pyramidChartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('pyramidChart').getContext('2d');
+            pyramidChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedLabels,
+                    datasets: [{
+                        label: 'Climbs',
+                        data: dataValues,
+                        backgroundColor: '#2563eb',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', 
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { 
+                            beginAtZero: true, 
+                            title: { display: true, text: 'Number of Climbs' },
+                            ticks: { stepSize: 1 } // Ensures chart only shows whole numbers
+                        }
+                    }
+                }
+            });
+        }
+
+        // Boot up the app
+        loadLocations();
     </script>
 </body>
 </html>
