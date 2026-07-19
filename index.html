@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climbing Log</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 500px;
+            margin: 2rem auto;
+            padding: 1rem;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        input[type="text"], select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        .hidden {
+            display: none;
+        }
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        button:disabled {
+            background: #93c5fd;
+            cursor: not-allowed;
+        }
+        #message {
+            margin-top: 1rem;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Log a Climb</h2>
+        <form id="climbForm">
+            
+            <div class="form-group">
+                <label for="locationSelect">Location</label>
+                <select id="locationSelect" required>
+                    <option value="" disabled selected>Loading locations...</option>
+                </select>
+            </div>
+
+            <div class="form-group hidden" id="newLocationGroup">
+                <label for="newLocationInput">New Location Name</label>
+                <input type="text" id="newLocationInput" placeholder="Enter new location">
+            </div>
+
+            <div class="form-group">
+                <label for="climbType">Type</label>
+                <select id="climbType" required>
+                    <option value="" disabled selected>Select type</option>
+                    <option value="boulder">Boulder</option>
+                    <option value="top_rope">Top Rope</option>
+                    <option value="sport">Sport</option>
+                    <option value="trad">Trad</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="grade">Grade</label>
+                <select id="grade" required disabled>
+                    <option value="" disabled selected>Select a type first</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="send">Send Type</label>
+                <select id="send" required>
+                    <option value="" disabled selected>Select outcome</option>
+                    <option value="Onsight">Onsight</option>
+                    <option value="Flash">Flash</option>
+                    <option value="Redpoint">Redpoint</option>
+                    <option value="Project (Progress)">Project (Progress)</option>
+                    <option value="Project (No Progress)">Project (No Progress)</option>
+                    <option value="Bailed">Bailed</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="feel">How it felt</label>
+                <select id="feel" required>
+                    <option value="" disabled selected>Select feeling</option>
+                    <option value="Easy">Easy</option>
+                    <option value="Work">Work</option>
+                    <option value="Impossible">Impossible</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="climbName">Name (Optional)</label>
+                <input type="text" id="climbName" placeholder="e.g., The Rose">
+            </div>
+
+            <div class="form-group">
+                <label for="passcode">Passcode</label>
+                <input type="password" id="passcode" placeholder="Enter secret pin" required>
+            </div>
+
+            <button type="submit" id="submitBtn">Save Climb</button>
+        </form>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwUd7z1c23YAnyKXoCy_U_MselrMXuozm6PrsSy4txv5RPiaTg9_KvdNu88px4v9e4/exec'; 
+
+        const form = document.getElementById('climbForm');
+        const locationSelect = document.getElementById('locationSelect');
+        const newLocationGroup = document.getElementById('newLocationGroup');
+        const newLocationInput = document.getElementById('newLocationInput');
+        const climbTypeSelect = document.getElementById('climbType');
+        const gradeSelect = document.getElementById('grade');
+        const submitBtn = document.getElementById('submitBtn');
+        const messageDiv = document.getElementById('message');
+
+        // Grade scale arrays
+        const vGrades = ['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15'];
+        const ydsGrades = [
+            '5.5', '5.6', '5.7', '5.8', '5.9', 
+            '5.10a', '5.10b', '5.10c', '5.10d',
+            '5.11a', '5.11b', '5.11c', '5.11d',
+            '5.12a', '5.12b', '5.12c', '5.12d',
+            '5.13a', '5.13b', '5.13c', '5.13d',
+            '5.14a', '5.14b', '5.14c', '5.14d'
+        ];
+
+        // 1. Load Locations on Startup
+        async function loadLocations() {
+            try {
+                
+                const response = await fetch(SCRIPT_URL + "?action=getLocations");
+                const data = await response.json();
+                const locations = data.locations;
+                 
+                locationSelect.innerHTML = '<option value="" disabled selected>Select a location</option>';
+                
+                locations.forEach(loc => {
+                    const option = document.createElement('option');
+                    option.value = loc;
+                    option.textContent = loc;
+                    locationSelect.appendChild(option);
+                });
+
+                const newOption = document.createElement('option');
+                newOption.value = 'ADD_NEW';
+                newOption.textContent = '+ Add New Location...';
+                locationSelect.appendChild(newOption);
+
+            } catch (error) {
+                console.error("Error loading locations:", error);
+                locationSelect.innerHTML = '<option value="">Error loading locations</option>';
+            }
+        }
+
+        // 2. Toggle "New Location" Input
+        locationSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'ADD_NEW') {
+                newLocationGroup.classList.remove('hidden');
+                newLocationInput.required = true;
+                newLocationInput.focus();
+            } else {
+                newLocationGroup.classList.add('hidden');
+                newLocationInput.required = false;
+                newLocationInput.value = ''; 
+            }
+        });
+
+        // 3. Dynamically populate the Grade dropdown
+        climbTypeSelect.addEventListener('change', (e) => {
+            const selectedType = e.target.value;
+            
+            // Clear existing options
+            gradeSelect.innerHTML = '<option value="" disabled selected>Select grade</option>';
+            
+            // Determine which array to use
+            const gradesToUse = selectedType === 'boulder' ? vGrades : ydsGrades;
+            
+            // Populate the dropdown
+            gradesToUse.forEach(grade => {
+                const option = document.createElement('option');
+                option.value = grade;
+                option.textContent = grade;
+                gradeSelect.appendChild(option);
+            });
+
+            // Enable the dropdown now that it has data
+            gradeSelect.disabled = false;
+        });
+
+        // 4. Handle Form Submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+            messageDiv.textContent = '';
+
+            const finalLocation = locationSelect.value === 'ADD_NEW' 
+                ? newLocationInput.value 
+                : locationSelect.value;
+
+            // Updated payload to include both send and feel
+            const payload = {
+                action: "logClimb",
+                location: finalLocation,
+                type: climbTypeSelect.value,
+                grade: gradeSelect.value,
+                send: document.getElementById('send').value,
+                feel: document.getElementById('feel').value,
+                name: document.getElementById('climbName').value,
+                passcode: document.getElementById('passcode').value
+            };
+
+            try {
+                // --- PRODUCTION CODE ---
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                // --- NEW: Check what the Apps Script actually said ---
+                if (!result.success) {
+                    // This kicks us down to the catch() block below
+                    throw new Error(result.error || 'Server rejected the request'); 
+                }
+
+                // If we make it here, the passcode was right and it saved!
+                messageDiv.style.color = 'green';
+                messageDiv.textContent = 'Climb logged successfully!';
+                
+                // Reset form
+                form.reset();
+                newLocationGroup.classList.add('hidden');
+                gradeSelect.disabled = true;
+                gradeSelect.innerHTML = '<option value="" disabled selected>Select a type first</option>';
+                
+                if (locationSelect.value === 'ADD_NEW') {
+                    loadLocations(); 
+                }
+
+            } catch (error) {
+                console.error("Error saving:", error);
+                messageDiv.style.color = 'red';
+                // Show the specific error (like "Invalid Passcode") if we have it
+                messageDiv.textContent = error.message === 'Invalid Passcode' 
+                    ? 'Incorrect Passcode!' 
+                    : 'Error saving climb.';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Climb';
+            }
+        });
+
+        // Boot up the app
+        loadLocations();
+    </script>
+</body>
+</html>
