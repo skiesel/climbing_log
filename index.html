@@ -15,61 +15,19 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        /* --- Squeezed Base Styles --- */
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            max-width: 500px;
-            margin: 0 auto; /* Removed vertical margin */
-            padding: 0.5rem; /* Squeezed padding */
-            background-color: #f9f9f9;
-            color: #333;
-        }
-        .container {
-            background: white;
-            padding: 1rem; /* Squeezed from 2rem */
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        h2 {
-            margin-top: 0;
-            margin-bottom: 0.75rem;
-            font-size: 1.25rem;
-        }
-        .form-group {
-            margin-bottom: 0.75rem; /* Squeezed from 1.25rem */
-        }
-        label {
-            display: block;
-            margin-bottom: 0.25rem;
-            font-weight: 600;
-            font-size: 0.9rem; /* Squeezed font */
-        }
-        input[type="text"], input[type="password"], select {
-            width: 100%;
-            padding: 0.5rem; /* Squeezed from 0.75rem */
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 1rem;
-        }
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 500px; margin: 0 auto; padding: 0.5rem; background-color: #f9f9f9; color: #333; }
+        .container { background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; margin-bottom: 0.75rem; font-size: 1.25rem; }
+        .form-group { margin-bottom: 0.75rem; }
+        label { display: block; margin-bottom: 0.25rem; font-weight: 600; font-size: 0.9rem; }
+        input[type="text"], input[type="password"], select { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1rem; }
         .hidden { display: none; }
-        button {
-            width: 100%;
-            padding: 0.75rem; /* Squeezed from 1rem */
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
+        .system-selectors { display: flex; gap: 0.5rem; margin-top: 0.5rem;}
+        button { width: 100%; padding: 0.75rem; background: #2563eb; color: white; border: none; border-radius: 4px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
         button:hover { background: #1d4ed8; }
         button:disabled { background: #93c5fd; cursor: not-allowed; }
         #message { margin-top: 0.5rem; text-align: center; font-weight: bold; font-size: 0.9rem;}
 
-        /* --- Dashboard Styles --- */
         .tabs { display: flex; margin-bottom: 0.5rem; border-bottom: 2px solid #ccc; max-width: 500px; margin: 0 auto 0.5rem auto; }
         .tab-btn { flex: 1; padding: 0.75rem; background: none; color: #666; border: none; font-weight: bold; cursor: pointer; border-radius: 0; }
         .tab-btn.active { color: #2563eb; border-bottom: 3px solid #2563eb; background: #fff; }
@@ -77,41 +35,20 @@
         .view-section.active { display: block; }
         
         .calendar-wrapper { margin-top: 0.5rem; padding-bottom: 0.5rem; }
-        
-        /* Grid changed to take full width and scale fluidly */
-        .calendar-grid { 
-            display: grid; 
-            grid-template-rows: repeat(7, 1fr); 
-            grid-auto-flow: column; 
-            gap: 2px; 
-            width: 100%; 
-        }
+        .calendar-grid { display: grid; grid-template-rows: repeat(7, 1fr); grid-auto-flow: column; gap: 2px; width: 100%; }
         .day-cell {
-            width: 100%;
-            aspect-ratio: 1; /* Keeps them perfectly square no matter the screen width */
-            background-color: #ebedf0;
-            border-radius: 2px;
+            width: 100%; aspect-ratio: 1; background-color: #ebedf0; border-radius: 2px;
             display: flex; align-items: center; justify-content: center;
-            font-size: clamp(8px, 2.5vw, 12px); /* Scales icon size with cell size */
-            cursor: pointer;
-            transition: filter 0.1s; /* Swapped transform for filter */
-            box-sizing: border-box; 
+            font-size: clamp(8px, 2.5vw, 12px); cursor: pointer;
+            transition: filter 0.1s; box-sizing: border-box;
         }
-        
-        /* New highlight for selected day */
-        .day-cell.selected {
-            filter: brightness(0.6); /* Darkens the cell automatically */
-            outline: 2px solid #333; /* Outline doesn't push the grid layout */
-            outline-offset: -2px; /* Pulls the outline inside the box */
-            z-index: 10;
-        }
+        .day-cell.selected { filter: brightness(0.6); outline: 2px solid #333; outline-offset: -2px; z-index: 10; }
 
         .intensity-1 { background-color: #9be9a8; }
         .intensity-2 { background-color: #40c463; }
         .intensity-3 { background-color: #30a14e; }
         .intensity-4 { background-color: #216e39; }
-        
-        .chart-container { position: relative; height: 200px; width: 100%; margin-top: 0.5rem; } /* Shorter chart */
+        .chart-container { position: relative; height: 200px; width: 100%; margin-top: 0.5rem; } 
     </style>
 </head>
 <body>
@@ -130,19 +67,27 @@
                 <div class="form-group">
                     <label for="locationSelect">Location</label>
                     <select id="locationSelect" required>
-                        <option value="" disabled selected>Loading...</option>
+                        <option value="" disabled selected>Loading Data...</option>
                     </select>
                 </div>
 
                 <div class="form-group hidden" id="newLocationGroup">
-                    <label for="newLocationInput">New Location Name</label>
+                    <label for="newLocationInput">New Location Name & Scales</label>
                     <input type="text" id="newLocationInput" placeholder="Enter new location">
+                    <div class="system-selectors">
+                        <select id="newBoulderScaleSelect" required disabled>
+                            <option value="">Boulder Scale</option>
+                        </select>
+                        <select id="newRouteScaleSelect" required disabled>
+                            <option value="">Route Scale</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label for="climbType">Type</label>
-                    <select id="climbType" required>
-                        <option value="" disabled selected>Select type</option>
+                    <select id="climbType" required disabled>
+                        <option value="" disabled selected>Select location first</option>
                         <option value="boulder">Boulder</option>
                         <option value="top_rope">Top Rope</option>
                         <option value="sport">Sport</option>
@@ -218,88 +163,155 @@
     </div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwMdQ4um0rdJc-ZVN6KxBJ8rgYOzPpXyWIKWs335sy9FYAoC-ZZ-GYGccuL_Y2WHNc/exec'; 
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzc-nuX3k3dMVc0ldpmntdFCst2biTFGIf_K5K-rT7gVy_BfuLNXmNd73ZaTtK2L0g/exec'; 
 
         const form = document.getElementById('climbForm');
         const locationSelect = document.getElementById('locationSelect');
         const newLocationGroup = document.getElementById('newLocationGroup');
         const newLocationInput = document.getElementById('newLocationInput');
+        const newBoulderScaleSelect = document.getElementById('newBoulderScaleSelect');
+        const newRouteScaleSelect = document.getElementById('newRouteScaleSelect');
         const climbTypeSelect = document.getElementById('climbType');
         const gradeSelect = document.getElementById('grade');
         const submitBtn = document.getElementById('submitBtn');
         const messageDiv = document.getElementById('message');
 
-        const vGrades = ['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15'];
-        const ydsGrades = [
-            '5.5', '5.6', '5.7', '5.8', '5.9', 
-            '5.10a', '5.10b', '5.10c', '5.10d',
-            '5.11a', '5.11b', '5.11c', '5.11d',
-            '5.12a', '5.12b', '5.12c', '5.12d',
-            '5.13a', '5.13b', '5.13c', '5.13d',
-            '5.14a', '5.14b', '5.14c', '5.14d'
-        ];
+        // Master Global State (Updated for wide-column format)
+        let appData = { locations: [], scaleHeaders: [], scaleRows: [], logs: [] };
+        let pyramidChartInstance = null;
+        let selectedDateFilter = null;
 
-        async function loadLocations() {
+        // 1. Unified Startup Fetch
+        async function loadAppData() {
             try {
-                const response = await fetch(SCRIPT_URL + "?action=getLocations");
-                const data = await response.json();
-                const locations = data.locations;
-                 
-                locationSelect.innerHTML = '<option value="" disabled selected>Select a location</option>';
+                const response = await fetch(SCRIPT_URL + "?action=getAppData");
+                const result = await response.json();
                 
-                locations.forEach(loc => {
-                    const option = document.createElement('option');
-                    option.value = loc;
-                    option.textContent = loc;
-                    locationSelect.appendChild(option);
-                });
-
-                const newOption = document.createElement('option');
-                newOption.value = 'ADD_NEW';
-                newOption.textContent = '+ Add New Location...';
-                locationSelect.appendChild(newOption);
+                if(result.success) {
+                    appData = result;
+                    initializeUI();
+                } else {
+                    throw new Error("Failed to fetch data payload");
+                }
             } catch (error) {
-                console.error("Error loading locations:", error);
-                locationSelect.innerHTML = '<option value="">Error loading locations</option>';
+                console.error("Error loading app data:", error);
+                locationSelect.innerHTML = '<option value="">Error loading data</option>';
             }
         }
 
+        function initializeUI() {
+            // Populate Location Dropdown
+            locationSelect.innerHTML = '<option value="" disabled selected>Select a location</option>';
+            appData.locations.forEach(loc => {
+                const option = document.createElement('option');
+                option.value = loc.name;
+                option.textContent = loc.name;
+                locationSelect.appendChild(option);
+            });
+            
+            const newOption = document.createElement('option');
+            newOption.value = 'ADD_NEW';
+            newOption.textContent = '+ Add New Location...';
+            locationSelect.appendChild(newOption);
+
+            // Unlock Types
+            climbTypeSelect.disabled = false;
+            climbTypeSelect.innerHTML = `
+                <option value="" disabled selected>Select type</option>
+                <option value="boulder">Boulder</option>
+                <option value="top_rope">Top Rope</option>
+                <option value="sport">Sport</option>
+                <option value="trad">Trad</option>
+            `;
+
+            // Setup New Location Dropdowns using the Column Headers
+            newBoulderScaleSelect.innerHTML = '<option value="" disabled selected>Boulder Scale</option>';
+            newRouteScaleSelect.innerHTML = '<option value="" disabled selected>Route Scale</option>';
+            
+            appData.scaleHeaders.forEach(sys => {
+                const bOpt = document.createElement('option'); bOpt.value = sys; bOpt.textContent = sys;
+                const rOpt = document.createElement('option'); rOpt.value = sys; rOpt.textContent = sys;
+                newBoulderScaleSelect.appendChild(bOpt);
+                newRouteScaleSelect.appendChild(rOpt);
+            });
+
+            if (appData.logs.length > 0) {
+                renderCalendar();
+                renderPyramid();
+            }
+        }
+
+        // 2. Form Interactions
         locationSelect.addEventListener('change', (e) => {
             if (e.target.value === 'ADD_NEW') {
                 newLocationGroup.classList.remove('hidden');
                 newLocationInput.required = true;
+                newBoulderScaleSelect.required = true;
+                newBoulderScaleSelect.disabled = false;
+                newRouteScaleSelect.required = true;
+                newRouteScaleSelect.disabled = false;
                 newLocationInput.focus();
             } else {
                 newLocationGroup.classList.add('hidden');
                 newLocationInput.required = false;
-                newLocationInput.value = ''; 
+                newBoulderScaleSelect.required = false;
+                newRouteScaleSelect.required = false;
             }
+            
+            climbTypeSelect.value = "";
+            gradeSelect.innerHTML = '<option value="" disabled selected>Select a type first</option>';
+            gradeSelect.disabled = true;
         });
 
         climbTypeSelect.addEventListener('change', (e) => {
             const selectedType = e.target.value;
+            const locationName = locationSelect.value === 'ADD_NEW' ? 'ADD_NEW' : locationSelect.value;
+            
+            if(!locationName) return;
+
+            let targetSystem = "";
+            if (locationName === 'ADD_NEW') {
+                targetSystem = selectedType === 'boulder' ? newBoulderScaleSelect.value : newRouteScaleSelect.value;
+            } else {
+                const locObj = appData.locations.find(l => l.name === locationName);
+                if(locObj) {
+                    targetSystem = selectedType === 'boulder' ? locObj.boulderScale : locObj.routeScale;
+                }
+            }
+
             gradeSelect.innerHTML = '<option value="" disabled selected>Select grade</option>';
             
-            const gradesToUse = selectedType === 'boulder' ? vGrades : ydsGrades;
-            gradesToUse.forEach(grade => {
-                const option = document.createElement('option');
-                option.value = grade;
-                option.textContent = grade;
-                gradeSelect.appendChild(option);
-            });
-            gradeSelect.disabled = false;
+            if (targetSystem) {
+                const systemIndex = appData.scaleHeaders.indexOf(targetSystem);
+                if (systemIndex > -1) {
+                    // Grab all grades from that specific column and remove blanks
+                    const allGrades = appData.scaleRows.map(row => row[systemIndex]).filter(g => g !== "" && g !== undefined);
+                    
+                    // Deduplicate them so "Yellow" only appears once
+                    const uniqueGrades = [...new Set(allGrades)];
+                    
+                    uniqueGrades.forEach(grade => {
+                        const option = document.createElement('option');
+                        option.value = grade;
+                        option.textContent = grade;
+                        gradeSelect.appendChild(option);
+                    });
+                    gradeSelect.disabled = false;
+                }
+            } else {
+                gradeSelect.innerHTML = '<option value="" disabled selected>Finish location setup first</option>';
+            }
         });
 
+        // 3. Form Submission
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             submitBtn.disabled = true;
             submitBtn.textContent = 'Saving...';
             messageDiv.textContent = '';
 
-            const finalLocation = locationSelect.value === 'ADD_NEW' 
-                ? newLocationInput.value 
-                : locationSelect.value;
+            const isNewLoc = locationSelect.value === 'ADD_NEW';
+            const finalLocation = isNewLoc ? newLocationInput.value : locationSelect.value;
 
             const payload = {
                 action: "logClimb",
@@ -309,7 +321,9 @@
                 send: document.getElementById('send').value,
                 feel: document.getElementById('feel').value,
                 name: document.getElementById('climbName').value,
-                passcode: document.getElementById('passcode').value
+                passcode: document.getElementById('passcode').value,
+                newBoulderScale: isNewLoc ? newBoulderScaleSelect.value : null,
+                newRouteScale: isNewLoc ? newRouteScaleSelect.value : null
             };
 
             try {
@@ -320,9 +334,7 @@
                 });
                 const result = await response.json();
                 
-                if (!result.success) {
-                    throw new Error(result.error || 'Server rejected the request'); 
-                }
+                if (!result.success) throw new Error(result.error || 'Server rejected the request'); 
 
                 messageDiv.style.color = 'green';
                 messageDiv.textContent = 'Climb logged successfully!';
@@ -332,89 +344,45 @@
                 gradeSelect.disabled = true;
                 gradeSelect.innerHTML = '<option value="" disabled selected>Select a type first</option>';
                 
-                climbingData = []; 
+                loadAppData(); 
 
-                if (locationSelect.value === 'ADD_NEW') {
-                    loadLocations(); 
-                }
             } catch (error) {
                 console.error("Error saving:", error);
                 messageDiv.style.color = 'red';
-                messageDiv.textContent = error.message === 'Invalid Passcode' 
-                    ? 'Incorrect Passcode!' 
-                    : 'Error saving climb.';
+                messageDiv.textContent = error.message === 'Invalid Passcode' ? 'Incorrect Passcode!' : 'Error saving climb.';
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Save';
             }
         });
 
-
-        // -----------------------------------------------------
-        // --- DASHBOARD LOGIC ---
-        // -----------------------------------------------------
-        
-        let climbingData = [];
-        let pyramidChartInstance = null;
-        let selectedDateFilter = null; // Tracks the clicked calendar day
-
+        // 4. Dashboard Logic
         function switchTab(tabId, btnElement) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            
             document.getElementById(tabId).classList.add('active');
             btnElement.classList.add('active');
-
-            if (tabId === 'dashboardView' && climbingData.length === 0) {
-                loadDashboardData();
-            }
         }
 
-        async function loadDashboardData() {
-            try {
-                const response = await fetch(SCRIPT_URL + "?action=getLogs");
-                const result = await response.json();
-                climbingData = result.logs || [];
-                
-                renderCalendar();
-                renderPyramid();
-            } catch (err) {
-                console.error("Failed to load data", err);
-            }
-        }
-
-        const icons = {
-            boulder: '👜', 
-            sport: '🔗',    
-            trad: '🔩',    
-            top_rope: '🪢' 
-        };
+        const icons = { boulder: '👜', sport: '🔗', trad: '🔩', top_rope: '🪢' };
 
         function renderCalendar() {
             const grid = document.getElementById('calendarGrid');
             grid.innerHTML = '';
             
             const daysMap = {};
-            climbingData.forEach(climb => {
+            appData.logs.forEach(climb => {
                 const dateObj = new Date(climb.date);
                 if (isNaN(dateObj.getTime())) return; 
-                
                 const dateStr = dateObj.toISOString().split('T')[0];
                 
-                if (!daysMap[dateStr]) {
-                    daysMap[dateStr] = { count: 0, types: {} };
-                }
-                
+                if (!daysMap[dateStr]) daysMap[dateStr] = { count: 0, types: {} };
                 daysMap[dateStr].count++;
                 
-                const currentType = climb.type;
-                if (!daysMap[dateStr].types[currentType]) {
-                    daysMap[dateStr].types[currentType] = 0;
-                }
-                daysMap[dateStr].types[currentType]++;
+                if (!daysMap[dateStr].types[climb.type]) daysMap[dateStr].types[climb.type] = 0;
+                daysMap[dateStr].types[climb.type]++;
             });
 
-            // Changed to exactly 84 days (12 weeks) so it divides evenly on screens without a scrollbar
             const today = new Date();
             for (let i = 83; i >= 0; i--) {
                 const d = new Date(today);
@@ -426,36 +394,23 @@
                 
                 if (daysMap[dateStr]) {
                     const data = daysMap[dateStr];
-                    
                     if (data.count > 0) cell.classList.add('intensity-1');
                     if (data.count > 3) cell.classList.add('intensity-2');
                     if (data.count > 6) cell.classList.add('intensity-3');
                     if (data.count > 10) cell.classList.add('intensity-4');
 
-                    const dominantType = Object.keys(data.types).reduce((a, b) => {
-                        return data.types[a] > data.types[b] ? a : b;
-                    });
-                    
+                    const dominantType = Object.keys(data.types).reduce((a, b) => data.types[a] > data.types[b] ? a : b);
                     cell.textContent = icons[dominantType] || '';
                     cell.title = `${dateStr}: ${data.count} climbs`; 
                 }
 
-                // --- Click-to-filter Logic ---
                 cell.onclick = () => {
-                    if (selectedDateFilter === dateStr) {
-                        selectedDateFilter = null; // Click again to deselect
-                    } else {
-                        selectedDateFilter = dateStr; // Click to select
-                    }
-                    renderCalendar(); // Re-render to highlight the cell
-                    renderPyramid();  // Re-render the chart with the filter applied
+                    selectedDateFilter = (selectedDateFilter === dateStr) ? null : dateStr;
+                    renderCalendar(); 
+                    renderPyramid(); 
                 };
 
-                // Highlight this cell if it's currently selected
-                if (selectedDateFilter === dateStr) {
-                    cell.classList.add('selected');
-                }
-                
+                if (selectedDateFilter === dateStr) cell.classList.add('selected');
                 grid.appendChild(cell);
             }
         }
@@ -464,65 +419,109 @@
             const typeFilter = document.getElementById('pyramidTypeFilter').value;
             const isBoulder = typeFilter === 'boulder';
             
-            const gradeCounts = {};
+            // 1. Find all systems used for this type across all known locations
+            const activeSystems = new Set();
+            appData.locations.forEach(loc => {
+                const sys = isBoulder ? loc.boulderScale : loc.routeScale;
+                if (sys) activeSystems.add(sys);
+            });
             
-            climbingData.forEach(climb => {
-                // --- Filter logic for clicked calendar day ---
+            const activeIndices = [];
+            activeSystems.forEach(sys => {
+                const idx = appData.scaleHeaders.indexOf(sys);
+                if (idx > -1) activeIndices.push(idx);
+            });
+
+            // 2. Tally climbs by row index
+            const rowCounts = {};
+            appData.logs.forEach(climb => {
                 if (selectedDateFilter) {
                     const climbDate = new Date(climb.date).toISOString().split('T')[0];
-                    if (climbDate !== selectedDateFilter) return; // Skip if it doesn't match
+                    if (climbDate !== selectedDateFilter) return;
                 }
 
                 const isClimbBoulder = climb.type === 'boulder';
                 if (isBoulder === isClimbBoulder) {
-                    if (!gradeCounts[climb.grade]) {
-                        gradeCounts[climb.grade] = 0;
+                    let rowIndex = -1;
+                    const loc = appData.locations.find(l => l.name === climb.location);
+                    
+                    if (loc) {
+                        const systemName = isClimbBoulder ? loc.boulderScale : loc.routeScale;
+                        const systemIndex = appData.scaleHeaders.indexOf(systemName);
+                        if (systemIndex > -1) {
+                            rowIndex = appData.scaleRows.findIndex(row => row[systemIndex] === climb.grade);
+                        }
                     }
-                    gradeCounts[climb.grade]++;
+
+                    // --- THE FIX: Smart Fallback Search ---
+                    // If historical logs used a different scale (like V-grades) but the gym 
+                    // is now set to Colors, search all active columns so old data isn't lost.
+                    if (rowIndex === -1) {
+                        for (let colIdx of activeIndices) {
+                            rowIndex = appData.scaleRows.findIndex(row => row[colIdx] === climb.grade);
+                            if (rowIndex > -1) break; // Found it!
+                        }
+                    }
+
+                    if (rowIndex === -1) return; // Grade doesn't exist in any scale, skip it
+                    
+                    rowCounts[rowIndex] = (rowCounts[rowIndex] || 0) + 1;
                 }
             });
 
-            const referenceScale = isBoulder ? vGrades : ydsGrades;
-            
-            const sortedLabels = Object.keys(gradeCounts).sort((a, b) => {
-                return referenceScale.indexOf(a) - referenceScale.indexOf(b);
-            });
-            
-            const dataValues = sortedLabels.map(grade => gradeCounts[grade]);
+            // 3. Build the chart using EVERY row from the active scales
+            const labels = [];
+            const dataValues = [];
 
-            if (pyramidChartInstance) {
-                pyramidChartInstance.destroy();
-            }
+            appData.scaleRows.forEach((row, rowIndex) => {
+                const rowGrades = new Set();
+                activeIndices.forEach(colIdx => {
+                    const gradeVal = row[colIdx];
+                    if (gradeVal && gradeVal !== "") {
+                        rowGrades.add(gradeVal);
+                    }
+                });
+
+                if (rowGrades.size > 0) {
+                    const gradeStrings = Array.from(rowGrades).join(' / ');
+                    labels.push(`Lv ${rowIndex + 1} (${gradeStrings})`);
+                    dataValues.push(rowCounts[rowIndex] || 0); 
+                }
+            });
+
+            if (pyramidChartInstance) pyramidChartInstance.destroy();
+
+            const chartContainer = document.querySelector('.chart-container');
+            chartContainer.style.height = `${labels.length * 30 + 40}px`;
 
             const ctx = document.getElementById('pyramidChart').getContext('2d');
             pyramidChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: sortedLabels,
+                    labels: labels,
                     datasets: [{
-                        // Change label depending on whether a day is selected or not
                         label: selectedDateFilter ? `Climbs on ${selectedDateFilter}` : 'All Time Climbs',
                         data: dataValues,
                         backgroundColor: '#2563eb',
                         borderRadius: 4
                     }]
                 },
-                options: {
+                options: { 
                     indexAxis: 'y', 
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { 
                         x: { 
                             beginAtZero: true, 
                             ticks: { stepSize: 1 } 
-                        }
-                    }
+                        } 
+                    } 
                 }
             });
         }
 
         // Boot up the app
-        loadLocations();
+        loadAppData();
     </script>
 </body>
 </html>
