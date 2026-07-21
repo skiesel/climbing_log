@@ -484,7 +484,7 @@
 
                 if (rowGrades.size > 0) {
                     const gradeStrings = Array.from(rowGrades).join(' / ');
-                    labels.push(`Lv ${rowIndex + 1} (${gradeStrings})`);
+                    labels.push(`${gradeStrings}`);
                     dataValues.push(rowCounts[rowIndex] || 0); 
                 }
             });
