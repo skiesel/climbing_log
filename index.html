@@ -116,9 +116,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="feel">How it felt</label>
+                    <label for="feel">Struggle</label>
                     <select id="feel" required>
-                        <option value="" disabled selected>Select feeling</option>
+                        <option value="" disabled selected>Select struggle</option>
                         <option value="Easy">Easy</option>
                         <option value="Work">Work</option>
                         <option value="Impossible">Impossible</option>
@@ -127,7 +127,7 @@
 
                 <div class="form-group">
                     <label for="climbName">Name (Optional)</label>
-                    <input type="text" id="climbName" placeholder="e.g., The Rose">
+                    <input type="text" id="climbName" placeholder="e.g., Black Slabbath">
                 </div>
 
                 <div class="form-group">
@@ -180,6 +180,53 @@
         let appData = { locations: [], scaleHeaders: [], scaleRows: [], logs: [] };
         let pyramidChartInstance = null;
         let selectedDateFilter = null;
+
+        function restoreFormState() {
+            // 1. ALWAYS restore passcode (Bypasses the 8-hour rule completely)
+            document.getElementById('passcode').value = localStorage.getItem('climbingPasscode') || '';
+
+            // 2. Check the 8-hour rule for the other fields
+            const lastLogStr = localStorage.getItem('lastLogTimestamp');
+            if (lastLogStr) {
+                const lastLogTime = parseInt(lastLogStr, 10);
+                const eightHoursMs = 8 * 60 * 60 * 1000;
+                
+                if (Date.now() - lastLogTime < eightHoursMs) {
+                    // Valid cache (< 8 hours). Restore fields in order to cascade the logic.
+                    const lastLoc = localStorage.getItem('lastLocation');
+                    if (lastLoc) {
+                        locationSelect.value = lastLoc;
+                        locationSelect.dispatchEvent(new Event('change')); // Triggers Type unlock
+                    }
+                    
+                    const lastType = localStorage.getItem('lastType');
+                    if (lastType) {
+                        climbTypeSelect.value = lastType;
+                        climbTypeSelect.dispatchEvent(new Event('change')); // Triggers Grade population
+                    }
+                    
+                    const lastGrade = localStorage.getItem('lastGrade');
+                    if (lastGrade) {
+                        gradeSelect.value = lastGrade;
+                    }
+                    
+                    const lastSend = localStorage.getItem('lastSend');
+                    if (lastSend) document.getElementById('send').value = lastSend;
+                    
+                    const lastFeel = localStorage.getItem('lastFeel');
+                    if (lastFeel) document.getElementById('feel').value = lastFeel;
+                    
+                } else {
+                    // Expired cache (> 8 hours). Clear the session data, leaving passcode untouched.
+                    localStorage.removeItem('lastLogTimestamp');
+                    localStorage.removeItem('lastLocation');
+                    localStorage.removeItem('lastType');
+                    localStorage.removeItem('lastGrade');
+                    localStorage.removeItem('lastSend');
+                    localStorage.removeItem('lastFeel');
+                }
+            }
+        }
 
         // 1. Unified Startup Fetch
         async function loadAppData() {
@@ -242,6 +289,9 @@
                 renderCalendar();
                 renderPyramid();
             }
+
+            // --- NEW: Restore the session state after UI is built ---
+            restoreFormState();
         }
 
         // 2. Form Interactions
@@ -329,7 +379,7 @@
                 newRouteScale: isNewLoc ? newRouteScaleSelect.value : null
             };
 
-            try {
+try {
                 const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -342,18 +392,23 @@
                 messageDiv.style.color = 'green';
                 messageDiv.textContent = 'Climb logged successfully!';
                 
-                // --- NEW: Save the passcode permanently ---
-                localStorage.setItem('climbingPasscode', payload.passcode);
-
-                form.reset();
-
-                // --- NEW: Immediately restore the passcode so it isn't blank for the next climb ---
-                document.getElementById('passcode').value = localStorage.getItem('climbingPasscode') || '';
-
-                newLocationGroup.classList.add('hidden');
-                gradeSelect.disabled = true;
-                gradeSelect.innerHTML = '<option value="" disabled selected>Select a type first</option>';
+                // --- NEW: Save Session Data ---
+                localStorage.setItem('climbingPasscode', payload.passcode); // Permanent
+                localStorage.setItem('lastLogTimestamp', Date.now().toString()); // Starts the 8-hour clock
+                localStorage.setItem('lastLocation', payload.location);
+                localStorage.setItem('lastType', payload.type);
+                localStorage.setItem('lastGrade', payload.grade);
+                localStorage.setItem('lastSend', payload.send);
+                localStorage.setItem('lastFeel', payload.feel);
+                // Note: We intentionally do NOT save payload.name
                 
+                form.reset();
+                newLocationGroup.classList.add('hidden');
+                
+                // --- NEW: Immediately snap the cached fields back into the UI ---
+                restoreFormState();
+                
+                // Fetch background updates for the dashboard
                 loadAppData(); 
 
             } catch (error) {
