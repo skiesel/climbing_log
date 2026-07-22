@@ -190,6 +190,9 @@
                 if(result.success) {
                     appData = result;
                     initializeUI();
+
+                    // --- NEW: Load saved passcode on startup ---
+                    document.getElementById('passcode').value = localStorage.getItem('climbingPasscode') || '';
                 } else {
                     throw new Error("Failed to fetch data payload");
                 }
@@ -339,7 +342,14 @@
                 messageDiv.style.color = 'green';
                 messageDiv.textContent = 'Climb logged successfully!';
                 
+                // --- NEW: Save the passcode permanently ---
+                localStorage.setItem('climbingPasscode', payload.passcode);
+
                 form.reset();
+
+                // --- NEW: Immediately restore the passcode so it isn't blank for the next climb ---
+                document.getElementById('passcode').value = localStorage.getItem('climbingPasscode') || '';
+
                 newLocationGroup.classList.add('hidden');
                 gradeSelect.disabled = true;
                 gradeSelect.innerHTML = '<option value="" disabled selected>Select a type first</option>';
